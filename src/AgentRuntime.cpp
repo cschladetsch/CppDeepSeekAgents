@@ -1,9 +1,10 @@
 #include "AgentRuntime.hpp"
+#include "rang.hpp"
 
 #include <nlohmann/json.hpp>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 
 namespace app {
@@ -34,10 +35,12 @@ AgentResult RunAgent(ChatBackend& backend,
           if (print_mutex) {
             std::lock_guard<std::mutex> lock(*print_mutex);
             if (!reasoning_delta.empty()) {
-              std::cout << "[" << agent.name << "][Reasoning] " << reasoning_delta << std::flush;
+              std::cout << rang::fg::magenta << "[" << agent.name << "][Reasoning] "
+                        << rang::fg::reset << reasoning_delta << std::flush;
             }
             if (!content_delta.empty()) {
-              std::cout << "[" << agent.name << "] " << content_delta << std::flush;
+              std::cout << rang::fg::cyan << "[" << agent.name << "] " << rang::fg::reset
+                        << content_delta << std::flush;
             }
           }
           reasoning_accum.append(reasoning_delta);
@@ -101,6 +104,7 @@ std::vector<AgentResult> RunDebateRounds(ChatBackend& backend,
   for (int r = 0; r < rounds; ++r) {
     for (auto& agent : agents) {
       auto result = RunAgent(backend, agent, current_prompt, stream, nullptr);
+      // Feed the previous response into the next agent for a simple debate loop.
       current_prompt = result.response.content;
       all_results.push_back(std::move(result));
     }

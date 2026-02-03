@@ -22,11 +22,33 @@ if (NOT nlohmann_json_FOUND)
   endif()
 endif()
 
+
 set(MODELSTORE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MODELSTORE_ALLOW_FETCHCONTENT OFF CACHE BOOL "" FORCE)
 add_subdirectory(modelstore)
 
 option(CPPDEEPSEEK_BUILD_APP "Build the CppDeepSeek demo application" ON)
+option(CPPDEEPSEEK_USE_LLAMA "Use llama.cpp for local backend" ON)
+option(CPPDEEPSEEK_ALLOW_FETCHCONTENT_LLAMA "Allow downloading llama.cpp via FetchContent" ON)
+set(LLAMA_CPP_DIR "" CACHE PATH "Path to llama.cpp (if not vendored)")
+
+if (CPPDEEPSEEK_USE_LLAMA)
+  if (LLAMA_CPP_DIR)
+    add_subdirectory(${LLAMA_CPP_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llama.cpp)
+  elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/llama.cpp/CMakeLists.txt)
+    add_subdirectory(third_party/llama.cpp)
+  elseif (CPPDEEPSEEK_ALLOW_FETCHCONTENT_LLAMA)
+    include(FetchContent)
+    FetchContent_Declare(
+      llama_cpp
+      GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
+      GIT_TAG b7472
+    )
+    FetchContent_MakeAvailable(llama_cpp)
+  else()
+    message(FATAL_ERROR "llama.cpp not found. Set LLAMA_CPP_DIR, add third_party/llama.cpp, or enable CPPDEEPSEEK_ALLOW_FETCHCONTENT_LLAMA.")
+  endif()
+endif()
 if (CPPDEEPSEEK_BUILD_APP)
   add_executable(CppDeepSeek
     src/main.cpp
@@ -34,11 +56,14 @@ if (CPPDEEPSEEK_BUILD_APP)
     src/AgentRuntime.cpp
     src/LogicGate.cpp
     src/CliOptions.cpp
-    src/LocalBackend.cpp
+    src/LlamaBackend.cpp
   )
 
   target_include_directories(CppDeepSeek PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_link_libraries(CppDeepSeek PRIVATE CURL::libcurl nlohmann_json::nlohmann_json ModelStore::ModelStore)
+  if (CPPDEEPSEEK_USE_LLAMA)
+    target_link_libraries(CppDeepSeek PRIVATE llama)
+  endif()
 endif()
 
 option(CPPDEEPSEEK_BUILD_TESTS "Build CppDeepSeek tests" ON)
@@ -72,8 +97,4 @@ if (CPPDEEPSEEK_BUILD_TESTS)
   target_link_libraries(CliOptionsTests PRIVATE GTest::gtest_main)
   gtest_discover_tests(CliOptionsTests)
 
-  add_executable(LocalBackendTests tests/LocalBackendTests.cpp src/LocalBackend.cpp)
-  target_include_directories(LocalBackendTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-  target_link_libraries(LocalBackendTests PRIVATE GTest::gtest_main)
-  gtest_discover_tests(LocalBackendTests)
 endif()

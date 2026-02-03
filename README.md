@@ -2,6 +2,33 @@
 
 High-performance C++20 client for DeepSeek-R1 with reasoning separation, streaming, and a reusable `ModelStore` library for shared model locations.
 
+**Quickstart (least friction)**
+```bash
+./b --deps
+./b
+./demo.sh
+```
+`demo.sh` requires CUDA by default. Use `DEMO_NO_CUDA=1` to run CPU-only.
+
+**Architecture**
+```mermaid
+flowchart LR
+  A[CLI / Demo] --> B[Agent Runtime]
+  B --> C{Backend}
+  C -->|Local| D[llama.cpp + GGUF]
+  C -->|Remote| E[DeepSeek API]
+  B --> F[Logic Gate]
+  B --> G[ModelStore Cache]
+```
+
+**WSL2 (CUDA)**
+CUDA must be installed inside WSL2 (paths under `/mnt/c` do not work for Linux builds).
+
+```bash
+scripts/install_cuda_wsl.sh
+./b --tests --cuda
+```
+
 **Build**
 ```bash
 cmake -S . -B build
@@ -19,10 +46,11 @@ cmake -S . -B build -DCPPDEEPSEEK_BUILD_APP=ON
 cmake --build build
 ```
 
-**Run (local-only default)**
+**Run (local-only default, uses llama.cpp)**
 ```bash
 ./build/CppDeepSeek
 ```
+Note: the app pauses between agent responses and waits for ENTER.
 
 **Run with DeepSeek API**
 ```bash
@@ -35,6 +63,22 @@ DEEPSEEK_API_KEY=your_key ./build/CppDeepSeek --remote
 DEEPSEEK_API_KEY=your_key ./build/CppDeepSeek --remote --model deepseek-reasoner --no-stream
 ./build/CppDeepSeek --load agent_memory.json --save agent_memory.json
 ```
+
+**Local model path**
+By default, the app expects:
+`~/.local/share/deepseek/models/deepseek-r1/model.gguf`
+
+**Default model download (medium/pro)**
+The build script downloads **DeepSeek‑R1‑Distill‑Qwen‑14B GGUF** (Q4_K_M) from the `bartowski` Hugging Face repo unless you set `DEEPSEEK_MODEL_SKIP=1`. The Q4_K_M file size is ~8.99 GB, so plan disk/ram accordingly. citeturn0search0
+
+Override the model URL:
+```bash
+DEEPSEEK_MODEL_URL="https://example.com/model.gguf" ./b --deps
+```
+
+**llama.cpp dependency**
+Provide llama.cpp as `third_party/llama.cpp`, pass `-DLLAMA_CPP_DIR=/path/to/llama.cpp`,
+or let CMake fetch it (default).
 
 **Environment**
 - `DEEPSEEK_API_KEY`: API key for DeepSeek.

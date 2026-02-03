@@ -2,6 +2,16 @@
 
 Reusable model‑path and streaming utilities for DeepSeek projects. This folder is structured to be split into its own repository and consumed by multiple applications.
 
+**Structure**
+```mermaid
+flowchart LR
+  A[App] --> B[ModelStore]
+  B --> C[ResolveModelHome]
+  B --> D[ResolveModelPath]
+  B --> E[EnsureModelDir]
+  C --> F[~/.local/share/deepseek/models]
+```
+
 **Build**
 ```bash
 cmake -S . -B build

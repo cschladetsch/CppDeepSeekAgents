@@ -11,11 +11,19 @@ std::string BuildGatePrompt(std::string_view rule, std::string_view input) {
   prompt.reserve(rule.size() + input.size() + 64);
   prompt.append("Rule: ").append(rule).append("\n");
   prompt.append("Input: ").append(input).append("\n");
-  prompt.append("Answer YES or NO only.");
+  prompt.append("Answer with a single token: YES or NO. No other text.");
   return prompt;
 }
 
 std::optional<bool> ParseDecision(std::string_view content) {
+  auto to_upper = [](std::string_view s) {
+    std::string out(s);
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    return out;
+  };
+
+  // First try: read the first word.
   size_t i = 0;
   while (i < content.size() && std::isspace(static_cast<unsigned char>(content[i]))) {
     ++i;
@@ -24,18 +32,25 @@ std::optional<bool> ParseDecision(std::string_view content) {
   while (i < content.size() && std::isalpha(static_cast<unsigned char>(content[i]))) {
     ++i;
   }
-  if (start == i) {
-    return std::nullopt;
+  if (start < i) {
+    std::string token = to_upper(content.substr(start, i - start));
+    if (token == "YES") return true;
+    if (token == "NO") return false;
   }
-  std::string token(content.substr(start, i - start));
-  std::transform(token.begin(), token.end(), token.begin(),
-                 [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-  if (token == "YES") {
-    return true;
-  }
-  if (token == "NO") {
-    return false;
-  }
+
+  // Fallback: find YES/NO anywhere as a standalone word.
+  const std::string upper = to_upper(content);
+  const auto is_word = [&](size_t pos, size_t len) {
+    bool left_ok = (pos == 0) || !std::isalpha(static_cast<unsigned char>(upper[pos - 1]));
+    bool right_ok = (pos + len >= upper.size()) ||
+                    !std::isalpha(static_cast<unsigned char>(upper[pos + len]));
+    return left_ok && right_ok;
+  };
+  size_t pos_yes = upper.find("YES");
+  if (pos_yes != std::string::npos && is_word(pos_yes, 3)) return true;
+  size_t pos_no = upper.find("NO");
+  if (pos_no != std::string::npos && is_word(pos_no, 2)) return false;
+
   return std::nullopt;
 }
 
