@@ -80,13 +80,20 @@ std::string Generate(llama_context* ctx,
 
 }  // namespace
 
-LlamaBackend::LlamaBackend(std::string model_path, int n_ctx, int n_threads)
-    : model_path_(std::move(model_path)), n_ctx_(n_ctx), n_threads_(n_threads) {
+LlamaBackend::LlamaBackend(std::string model_path,
+                           int n_ctx,
+                           int n_threads,
+                           int n_gpu_layers)
+    : model_path_(std::move(model_path)),
+      n_ctx_(n_ctx),
+      n_threads_(n_threads),
+      n_gpu_layers_(n_gpu_layers) {
   // Silence llama.cpp logs to keep demo output readable.
   llama_log_set([](ggml_log_level, const char*, void*) {}, nullptr);
   llama_backend_init();
 
   llama_model_params mparams = llama_model_default_params();
+  mparams.n_gpu_layers = n_gpu_layers_;
   model_ = llama_model_load_from_file(model_path_.c_str(), mparams);
   if (!model_) {
     throw std::runtime_error("Failed to load model: " + model_path_);

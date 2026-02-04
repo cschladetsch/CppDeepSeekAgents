@@ -9,12 +9,82 @@
 #include <cstdlib>
 #include <cctype>
 #include <algorithm>
+#include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
+
 namespace {
+
+uint64_t TotalSystemMemoryBytes() {
+#if defined(_WIN32)
+  return 0;
+#else
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+  if (pages <= 0 || page_size <= 0) {
+    return 0;
+  }
+  return static_cast<uint64_t>(pages) * static_cast<uint64_t>(page_size);
+#endif
+}
+
+int EstimateLayerCountFromModelSize(double model_gb) {
+  if (model_gb <= 5.5) {
+    return 32;
+  }
+  if (model_gb <= 9.5) {
+    return 40;
+  }
+  if (model_gb <= 18.0) {
+    return 60;
+  }
+  return 80;
+}
+
+int EstimateGpuLayersAuto(const std::string& model_path) {
+  std::error_code ec;
+  const uint64_t model_size = std::filesystem::file_size(model_path, ec);
+  if (ec || model_size == 0) {
+    return 0;
+  }
+  const uint64_t total_mem = TotalSystemMemoryBytes();
+  if (total_mem == 0) {
+    return 0;
+  }
+
+  const double model_gb = static_cast<double>(model_size) / (1024.0 * 1024.0 * 1024.0);
+  const double mem_gb = static_cast<double>(total_mem) / (1024.0 * 1024.0 * 1024.0);
+
+  // Keep generous headroom for OS + KV cache.
+  const double usable_gb = mem_gb * 0.6;
+  if (usable_gb < model_gb * 1.1) {
+    return 0;
+  }
+
+  const int total_layers = EstimateLayerCountFromModelSize(model_gb);
+  double fraction = usable_gb / (model_gb * 1.1);
+  if (fraction > 1.0) {
+    fraction = 1.0;
+  }
+  if (fraction < 0.1) {
+    fraction = 0.1;
+  }
+  int layers = static_cast<int>(std::lround(total_layers * fraction));
+  if (layers < 1) {
+    layers = 1;
+  }
+  if (layers > total_layers) {
+    layers = total_layers;
+  }
+  return layers;
+}
 
 bool ContainsToken(std::string_view text, std::string_view token) {
   auto it = std::search(
@@ -47,11 +117,17 @@ int main(int argc, char** argv) {
   app::ChatBackend backend;
   std::unique_ptr<deepseek::DeepSeekClient> client;
   std::unique_ptr<app::LlamaBackend> local_backend;
+  int resolved_gpu_layers = options->gpu_layers;
+  bool resolved_gpu_auto = options->gpu_layers_auto;
   if (options->local_only) {
     const std::string model_path =
         deepseek::ModelStore::ResolveModelPath("deepseek-r1") + "/model.gguf";
+    if (options->gpu_layers_auto) {
+      resolved_gpu_layers = EstimateGpuLayersAuto(model_path);
+    }
     try {
-      local_backend = std::make_unique<app::LlamaBackend>(model_path);
+      local_backend =
+          std::make_unique<app::LlamaBackend>(model_path, 4096, 0, resolved_gpu_layers);
     } catch (const std::exception& ex) {
       std::cerr << rang::fg::red << "Failed to initialize local model: " << rang::fg::reset
                 << ex.what() << "\n";
@@ -108,6 +184,14 @@ int main(int argc, char** argv) {
   std::cout << rang::fg::yellow << "Rounds: " << rang::fg::reset << options->rounds << "\n";
   std::cout << rang::fg::yellow << "Streaming: " << rang::fg::reset
             << (options->stream ? "on" : "off") << "\n";
+  if (options->local_only) {
+    std::cout << rang::fg::yellow << "GPU layers: " << rang::fg::reset;
+    if (resolved_gpu_auto) {
+      std::cout << "auto -> " << resolved_gpu_layers << "\n";
+    } else {
+      std::cout << resolved_gpu_layers << "\n";
+    }
+  }
   std::cout << "Model home (shared across projects): "
             << deepseek::ModelStore::ResolveModelHome() << "\n";
   std::cout << "Example model path (deepseek-r1): "

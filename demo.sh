@@ -34,14 +34,22 @@ else
 fi
 ctest --test-dir build
 
+DEMO_GPU_LAYERS="${DEMO_GPU_LAYERS:-0}"
+GPU_LAYERS_ARG=()
+if [[ "$DEMO_GPU_LAYERS" == "auto" ]]; then
+  GPU_LAYERS_ARG=(--gpu-layers auto)
+elif [[ "$DEMO_GPU_LAYERS" -gt 0 ]]; then
+  GPU_LAYERS_ARG=(--gpu-layers "$DEMO_GPU_LAYERS")
+fi
+
 echo
 echo "${bold}${cyan}=== Demo 1: Local-only, multi-round debate (no API key) ===${reset}"
-"$BIN" --topic "Is C++ a good agent runtime?" --rounds 2 --no-stream
+"$BIN" "${GPU_LAYERS_ARG[@]}" --topic "Is C++ a good agent runtime?" --rounds 2 --no-stream
 
 echo
 echo "${bold}${cyan}=== Demo 2: Local-only with memory persistence ===${reset}"
-"$BIN" --topic "Should agents write tests first in software engineering?" --rounds 1 --save "$MEM"
-"$BIN" --topic "Continue the software engineering debate about agent testing." --rounds 1 --load "$MEM" --save "$MEM"
+"$BIN" "${GPU_LAYERS_ARG[@]}" --topic "Should agents write tests first in software engineering?" --rounds 1 --save "$MEM"
+"$BIN" "${GPU_LAYERS_ARG[@]}" --topic "Continue the software engineering debate about agent testing." --rounds 1 --load "$MEM" --save "$MEM"
 
 echo
 echo "${bold}${cyan}=== Demo 3: Remote mode (optional) ===${reset}"

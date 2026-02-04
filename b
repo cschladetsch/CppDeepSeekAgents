@@ -6,6 +6,7 @@ WITH_MODELS=0
 WITH_TESTS=0
 FORCE_DEPS=0
 WITH_CUDA=1
+METAL_MODE=auto
 RUN_DEMO=0
 
 for arg in "$@"; do
@@ -17,9 +18,11 @@ for arg in "$@"; do
     --cuda) WITH_CUDA=1 ;;
     --no-cuda) WITH_CUDA=0 ;;
     --demo) RUN_DEMO=1 ;;
+    --metal) METAL_MODE=on ;;
+    --no-metal) METAL_MODE=off ;;
     *)
       echo "Unknown option: $arg" >&2
-      echo "Usage: ./b [--deps] [--force-deps] [--models] [--tests] [--cuda|--no-cuda] [--demo]" >&2
+      echo "Usage: ./b [--deps] [--force-deps] [--models] [--tests] [--cuda|--no-cuda] [--metal|--no-metal] [--demo]" >&2
       exit 1
       ;;
   esac
@@ -86,6 +89,17 @@ if [[ "$WITH_CUDA" -eq 1 ]]; then
   fi
 fi
 
+declare -a METAL_ARGS=()
+if [[ "$METAL_MODE" == "on" ]]; then
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "Metal is only supported on macOS." >&2
+    exit 1
+  fi
+  METAL_ARGS=(-DGGML_METAL=ON)
+elif [[ "$METAL_MODE" == "off" ]]; then
+  METAL_ARGS=(-DGGML_METAL=OFF)
+fi
+
 export CCACHE_DISABLE=1
 export GGML_CCACHE=OFF
 
@@ -96,7 +110,8 @@ cmake -S . -B build \
   -DMODELSTORE_ALLOW_FETCHCONTENT=${FETCHCONTENT} \
   -DCPPDEEPSEEK_ALLOW_FETCHCONTENT_LLAMA=ON \
   ${LLAMA_ARG[@]+"${LLAMA_ARG[@]}"} \
-  ${CUDA_ARGS[@]+"${CUDA_ARGS[@]}"}
+  ${CUDA_ARGS[@]+"${CUDA_ARGS[@]}"} \
+  ${METAL_ARGS[@]+"${METAL_ARGS[@]}"}
 
 cmake --build build
 

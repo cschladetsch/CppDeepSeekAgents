@@ -13,6 +13,7 @@ std::string Usage() {
       << "  --topic <text>     Debate topic (otherwise interactive CLI)\n"
       << "  --model <name>     Model name (default: deepseek-reasoner)\n"
       << "  --rounds <n>       Debate rounds (default: 1)\n"
+      << "  --gpu-layers <n|auto>   Offload N layers to GPU (llama.cpp, default: 0)\n"
       << "  --stream           Enable streaming (default)\n"
       << "  --no-stream        Disable streaming\n"
       << "  --local-only       Do not use network; require local backend (default)\n"
@@ -47,8 +48,8 @@ std::optional<CliOptions> ParseCli(int argc, char** argv, std::string* error_out
       opts.local_only = false;
       continue;
     }
-    if (arg == "--topic" || arg == "--model" || arg == "--rounds" || arg == "--load" ||
-        arg == "--save") {
+    if (arg == "--topic" || arg == "--model" || arg == "--rounds" || arg == "--gpu-layers" ||
+        arg == "--n-gpu-layers" || arg == "--load" || arg == "--save") {
       if (i + 1 >= argc) {
         if (error_out) {
           *error_out = "Missing value for " + arg;
@@ -61,6 +62,26 @@ std::optional<CliOptions> ParseCli(int argc, char** argv, std::string* error_out
         opts.topic_set = true;
       } else if (arg == "--model") {
         opts.model = value;
+      } else if (arg == "--gpu-layers" || arg == "--n-gpu-layers") {
+        if (value == "auto") {
+          opts.gpu_layers_auto = true;
+          opts.gpu_layers = 0;
+        } else {
+          try {
+            opts.gpu_layers = std::stoi(value);
+          } catch (...) {
+            if (error_out) {
+              *error_out = "Invalid gpu-layers value: " + value;
+            }
+            return std::nullopt;
+          }
+          if (opts.gpu_layers < 0) {
+            if (error_out) {
+              *error_out = "gpu-layers must be >= 0";
+            }
+            return std::nullopt;
+          }
+        }
       } else if (arg == "--load") {
         opts.load_path = value;
       } else if (arg == "--save") {

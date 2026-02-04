@@ -7,7 +7,8 @@ High-performance C++20 client for DeepSeek-R1 with reasoning separation, streami
 ./b --deps
 ./b --demo
 ```
-`demo.sh` requires CUDA by default. Use `DEMO_NO_CUDA=1` to run CPU-only.
+`demo.sh` requires CUDA by default. Use `DEMO_NO_CUDA=1` to run CPU-only. To offload with llama.cpp
+on GPU (CUDA/Metal), set `DEMO_GPU_LAYERS` (e.g., `DEMO_GPU_LAYERS=20` or `DEMO_GPU_LAYERS=auto`).
 
 **Architecture**
 ```mermaid
@@ -26,6 +27,13 @@ CUDA must be installed inside WSL2 (paths under `/mnt/c` do not work for Linux b
 ```bash
 scripts/install_cuda_wsl.sh
 ./b --tests --cuda
+```
+
+**macOS (Metal)**
+llama.cpp enables Metal on macOS by default. To force it on/off via the build helper:
+```bash
+./b --metal
+./b --no-metal
 ```
 
 **Build**
@@ -62,7 +70,11 @@ DEEPSEEK_API_KEY=your_key ./build/CppDeepSeek --remote
 ./build/CppDeepSeek --topic "Is C++ a good agent runtime?" --rounds 2
 DEEPSEEK_API_KEY=your_key ./build/CppDeepSeek --remote --model deepseek-reasoner --no-stream
 ./build/CppDeepSeek --load agent_memory.json --save agent_memory.json
+./build/CppDeepSeek --gpu-layers 20
+./build/CppDeepSeek --gpu-layers auto
 ```
+`--gpu-layers auto` uses a lightweight heuristic based on model file size and total system memory.
+It is most reliable on macOS (unified memory); for discrete GPUs, set an explicit value.
 
 **Local model path**
 By default, the app expects:
