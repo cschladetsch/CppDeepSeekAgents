@@ -22,26 +22,18 @@ This isn't about replacing Python for experimentation—it's about providing a p
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────┐
-│           Agent Runtime Layer               │
-│  (System Prompts, Memory, Debate Logic)     │
-└─────────────────┬───────────────────────────┘
-                  │
-┌─────────────────▼───────────────────────────┐
-│         Backend Interface (Abstract)        │
-│      (Chat API + Streaming Protocol)        │
-└─────┬───────────────────────────────┬───────┘
-      │                               │
-┌─────▼──────────┐          ┌─────────▼──────┐
-│ LlamaBackend   │          │  DeepSeek API  │
-│ (local GGUF)   │          │  (remote host) │
-└────────────────┘          └────────────────┘
-           │
-    ┌──────▼──────┐
-    │ ModelStore  │
-    │ (shared)    │
-    └─────────────┘
+```mermaid
+graph TD
+    A[Agent Runtime Layer<br/>System Prompts, Memory, Debate Logic] --> B[Backend Interface<br/>Chat API + Streaming Protocol]
+    B --> C[LlamaBackend<br/>Local GGUF]
+    B --> D[DeepSeek API<br/>Remote Host]
+    C --> E[ModelStore<br/>~/.local/share/deepseek/models]
+    
+    style A fill:#4a90e2,color:#fff
+    style B fill:#7b68ee,color:#fff
+    style C fill:#50c878,color:#fff
+    style D fill:#50c878,color:#fff
+    style E fill:#ffa500,color:#fff
 ```
 
 The system has three layers:
