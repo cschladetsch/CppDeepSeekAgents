@@ -43,7 +43,7 @@ if [[ ! -f "$MODEL_PATH" && "${DEEPSEEK_MODEL_SKIP:-0}" != "1" ]]; then
   curl -L "$MODEL_URL" -o "$MODEL_PATH"
 fi
 
-LLAMA_ARG=()
+declare -a LLAMA_ARG=()
 if [[ -n "${LLAMA_CPP_DIR:-}" ]]; then
   LLAMA_ARG=(-DLLAMA_CPP_DIR="${LLAMA_CPP_DIR}")
 fi
@@ -57,7 +57,7 @@ if [[ "$WITH_TESTS" -eq 1 ]]; then
   FETCHCONTENT=ON
 fi
 
-CUDA_ARGS=()
+declare -a CUDA_ARGS=()
 if [[ "$WITH_CUDA" -eq 1 ]]; then
   if command -v nvidia-smi >/dev/null 2>&1; then
     CUDA_ARGS=(-DGGML_CUDA=ON)
@@ -95,8 +95,8 @@ cmake -S . -B build \
   -DMODELSTORE_BUILD_TESTS=${MODEL_TESTS} \
   -DMODELSTORE_ALLOW_FETCHCONTENT=${FETCHCONTENT} \
   -DCPPDEEPSEEK_ALLOW_FETCHCONTENT_LLAMA=ON \
-  "${LLAMA_ARG[@]}" \
-  "${CUDA_ARGS[@]}"
+  ${LLAMA_ARG[@]+"${LLAMA_ARG[@]}"} \
+  ${CUDA_ARGS[@]+"${CUDA_ARGS[@]}"}
 
 cmake --build build
 
