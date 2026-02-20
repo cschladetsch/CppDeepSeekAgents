@@ -42,6 +42,16 @@ cmake -S . -B build
 cmake --build build
 ```
 
+**Tests (offline-friendly)**
+```bash
+git submodule update --init --recursive
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build
+```
+ModelStore tests also use the vendored googletest submodule. If you prefer downloads, configure with
+`-DMODELSTORE_ALLOW_FETCHCONTENT=ON`.
+
 **Install deps (Ubuntu/Debian)**
 ```bash
 scripts/install_deps.sh

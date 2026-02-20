@@ -70,14 +70,22 @@ endif()
 
 option(CPPDEEPSEEK_BUILD_TESTS "Build CppDeepSeek tests" ON)
 if (CPPDEEPSEEK_BUILD_TESTS)
-  include(FetchContent)
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-  )
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
+  set(GTEST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest)
+  if (EXISTS ${GTEST_SOURCE_DIR}/CMakeLists.txt)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    add_subdirectory(${GTEST_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/third_party/googletest)
+  else()
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+  endif()
   enable_testing()
   include(GoogleTest)
   add_executable(AgentRuntimeTests tests/AgentRuntimeTests.cpp src/AgentRuntime.cpp)

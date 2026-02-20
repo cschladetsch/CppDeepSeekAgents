@@ -41,16 +41,24 @@ target_compile_features(ModelStore PUBLIC cxx_std_20)
 
 option(MODELSTORE_BUILD_TESTS "Build ModelStore tests" ON)
 if (MODELSTORE_BUILD_TESTS)
-  if (NOT MODELSTORE_ALLOW_FETCHCONTENT)
-    message(FATAL_ERROR "ModelStore tests require FetchContent. Enable MODELSTORE_ALLOW_FETCHCONTENT.")
+  set(GTEST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/googletest)
+  if (EXISTS ${GTEST_SOURCE_DIR}/CMakeLists.txt)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    add_subdirectory(${GTEST_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/third_party/googletest)
+  else()
+    if (NOT MODELSTORE_ALLOW_FETCHCONTENT)
+      message(FATAL_ERROR "ModelStore tests require vendored googletest or MODELSTORE_ALLOW_FETCHCONTENT.")
+    endif()
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
   endif()
-  include(FetchContent)
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-  )
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
 
   enable_testing()
   include(GoogleTest)

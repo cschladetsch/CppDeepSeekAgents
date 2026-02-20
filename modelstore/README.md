@@ -24,6 +24,8 @@ cmake -S . -B build
 cmake --build build
 ctest --test-dir build
 ```
+Tests prefer a vendored googletest submodule at `../third_party/googletest`. If it's missing,
+configure with `-DMODELSTORE_ALLOW_FETCHCONTENT=ON` to download it.
 
 **Ensure models via CMake**
 ```bash
